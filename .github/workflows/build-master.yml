@@ -1,97 +1,103 @@
-name: Build EssentialsX
-
-on:
-  push:
-    branches:
-    - 2.x
-    - dev/*
-  release:
-    types:
-    - published
-
 jobs:
   build:
     name: Build and upload
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-    - name: Checkout Git repo
+    - continue-on-error: true
+      name: Checkout Git repo
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
-    - name: Set up JDK 17
+    - continue-on-error: true
+      name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
+        distribution: temurin
         java-version: 17
-
-    - name: Setup Gradle
+    - continue-on-error: true
+      name: Setup Gradle
       uses: gradle/gradle-build-action@v3
+    - continue-on-error: true
+      name: Build with Gradle
+      run: 'chmod +x gradlew
 
-    - name: Build with Gradle
-      run: |
-        chmod +x gradlew
         ./gradlew build --stacktrace
 
-    - name: Publish JUnit report
+        '
+    - continue-on-error: true
+      if: success() || failure()
+      name: Publish JUnit report
       uses: mikepenz/action-junit-report@v4
-      if: success() || failure() # Run even if the previous step fails
       with:
         report_paths: '**/build/test-results/test*/TEST-*.xml'
-
-    - name: Archive plugin jars on GitHub
+    - continue-on-error: true
+      name: Archive plugin jars on GitHub
       uses: actions/upload-artifact@v4
       with:
         name: EssentialsX plugin jars
         path: jars/
-
-    - name: Deploy to Maven repo
-      if: ${{ success() && github.event_name == 'push' && github.repository == 'EssentialsX/Essentials' && github.ref == 'refs/heads/2.x' }}
+    - continue-on-error: true
       env:
-        ORG_GRADLE_PROJECT_essxUsername: ${{ secrets.ESSENTIALSX_DEPLOY_USERNAME }}
         ORG_GRADLE_PROJECT_essxPassword: ${{ secrets.ESSENTIALSX_DEPLOY_PASSWORD }}
-      run: |
-        ./gradlew publish
+        ORG_GRADLE_PROJECT_essxUsername: ${{ secrets.ESSENTIALSX_DEPLOY_USERNAME }}
+      if: ${{ success() && github.event_name == 'push' && github.repository == 'EssentialsX/Essentials'
+        && github.ref == 'refs/heads/2.x' }}
+      name: Deploy to Maven repo
+      run: './gradlew publish
 
-    - name: Prepare Javadocs
-      run: |
-        mv Essentials/build/docs/javadoc/ javadocs/
+        '
+    - continue-on-error: true
+      name: Prepare Javadocs
+      run: 'mv Essentials/build/docs/javadoc/ javadocs/
+
         cp -r EssentialsAntiBuild/build/docs/javadoc/ javadocs/EssentialsAntiBuild/
+
         cp -r EssentialsChat/build/docs/javadoc/ javadocs/EssentialsChat/
+
         cp -r EssentialsDiscord/build/docs/javadoc/ javadocs/EssentialsDiscord/
+
         cp -r EssentialsDiscordLink/build/docs/javadoc/ javadocs/EssentialsDiscordLink/
+
         cp -r EssentialsGeoIP/build/docs/javadoc/ javadocs/EssentialsGeoIP/
+
         cp -r EssentialsProtect/build/docs/javadoc/ javadocs/EssentialsProtect/
+
         cp -r EssentialsSpawn/build/docs/javadoc/ javadocs/EssentialsSpawn/
+
         cp -r EssentialsXMPP/build/docs/javadoc/ javadocs/EssentialsXMPP/
 
-    - name: Archive Javadocs
+        '
+    - continue-on-error: true
+      name: Archive Javadocs
       uses: actions/upload-artifact@v4
       with:
         name: javadocs
         path: javadocs/
-
   publish-jd:
+    if: ${{ github.event_name == 'push' && github.repository == 'EssentialsX/Essentials'
+      && github.ref == 'refs/heads/2.x' }}
     name: Publish Javadocs
     needs: build
-    if: ${{ github.event_name == 'push' && github.repository == 'EssentialsX/Essentials' && github.ref == 'refs/heads/2.x' }}
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-    - name: Setup Node
+    - continue-on-error: true
+      name: Setup Node
       uses: actions/setup-node@v4
       with:
         node-version: 16
-
-    - name: Download Javadocs
+    - continue-on-error: true
+      name: Download Javadocs
       uses: actions/download-artifact@v4
       with:
         name: javadocs
         path: javadocs/
-
-    - name: Deploy Javadocs
-      run: npx netlify-cli deploy --dir=javadocs/ --prod --message="GitHubActionsDeploy"
+    - continue-on-error: true
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_JD_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_JD_2X_SITE_ID }}
+      name: Deploy Javadocs
+      run: npx netlify-cli deploy --dir=javadocs/ --prod --message="GitHubActionsDeploy"
+name: Build EssentialsX
+on:
+  repository_dispatch:
+    types: trigger-ga___build-master.yml
